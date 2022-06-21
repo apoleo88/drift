@@ -161,15 +161,25 @@ class DataClassWriter {
       final typeConverter = column.typeConverter;
       if (typeConverter != null && typeConverter.alsoAppliesToJsonConversion) {
         final type = column.innerColumnType(scope.generationOptions);
-        final fromConverter = "serializer.fromJson<$type>(json['$jsonKey'])";
+        var fromConverter = "serializer.fromJson<$type>(json['$jsonKey'])";
         final notNull =
             !column.nullable && scope.generationOptions.nnbd ? '!' : '';
-        deserialized =
-            '${typeConverter.tableAndField}.fromJson($fromConverter)$notNull';
+        /// MY CHANGES HERE
+        if(column.defaultArgument != null && column.innerColumnType() != 'DateTime') {
+          String default_value = column.defaultArgument!.replaceFirst('const Constant(', '').replaceFirst(')', '');
+
+          fromConverter = "(json.containsKey('$jsonKey')) ? serializer.fromJson<$type>(json['$jsonKey']) : $default_value";
+        }
+        deserialized = '${typeConverter.tableAndField}.fromJson($fromConverter)$notNull';
       } else {
         final type = column.dartTypeCode(scope.generationOptions);
+        /// MY CHANGES HERE
+        if(column.defaultArgument != null && column.innerColumnType() != 'DateTime') {
+          String default_value = column.defaultArgument!.replaceFirst('const Constant(', '').replaceFirst(')', '');
 
-        deserialized = "serializer.fromJson<$type>(json['$jsonKey'])";
+          deserialized = "(json.containsKey('$jsonKey')) ? serializer.fromJson<$type>(json['$jsonKey']) : $default_value";
+        }else
+          deserialized = "serializer.fromJson<$type>(json['$jsonKey'])";
       }
 
       _buffer.write('$getter: $deserialized,');
